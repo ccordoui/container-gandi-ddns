@@ -1,3 +1,11 @@
+## 1.2.0
+
+Fork https://github.com/wastrachan/docker-gandi-ddns
+Use ubi with s2i
+Convert the image to use it in kubernetes
+Make it compatible with security standard to be able to run on OCP
+
+
 ## 1.2
 
 Update dependencies

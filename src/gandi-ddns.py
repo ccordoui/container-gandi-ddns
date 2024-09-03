@@ -8,53 +8,29 @@ Released under the terms of the MIT license
 """
 
 import os
-
+from pathlib import Path
 import requests
-
-CACHE_KEY_IPV4 = "/run/ipv4.last"
-CACHE_KEY_IPV6 = "/run/ipv6.last"
+from typing import Optional, Dict, Tuple
 
 
-def _get_env_var(name, default=None):
-    """Returns value of an environment variable, or a default value.
-
-    Returns:
-        - Value of environment variable if environment variable is set
-        - Defaut value `default` if environment variable is not set
-
-    Raises:
-        ValueError if environment variable is not set AND `default` is False
-    """
-    try:
-        return os.environ[name]
-    except KeyError:
-        if default is False:
-            raise ValueError(
-                "The {} environment variable is required but not set.".format(name)
-            )
-        return default
-
-
-def _get_cache_value(key):
+def _get_cache_value(key: str) -> Optional[str]:
     """Returns a value for a cache key, or None"""
     address = None
     try:
-        with open(key) as f:
+        with Path(key).open() as f:
             address = f.read()
     except FileNotFoundError:
         address = None
     return address
 
 
-def _set_cache_value(key, value):
+def _set_cache_value(key: str, value: str) -> str:
     """Sets or updates the value for a cache key"""
-    with open(key, "w") as f:
-        f.seek(0)
-        f.write(value)
+    Path(key).write_text(value)
     return value
 
 
-def _get_gandi_headers():
+def _get_gandi_headers() -> Dict[str, str]:
     """Returns API request headers for the Gandi API"""
     return {
         "X-Api-Key": GANDI_KEY,
@@ -62,7 +38,7 @@ def _get_gandi_headers():
     }
 
 
-def get_ipv4():
+def get_ipv4() -> Tuple[Optional[str], bool]:
     """Gets the current public IPV4 address
 
     Returns:
@@ -85,7 +61,7 @@ def get_ipv4():
     return (address, changed)
 
 
-def get_ipv6():
+def get_ipv6() -> Tuple[Optional[str], bool]:
     """Gets the current public IPV6 address
 
     Returns:
@@ -108,66 +84,56 @@ def get_ipv6():
     return (address, changed)
 
 
-def update_a_record():
+def update_a_record() -> None:
     """Check public IPV4 address and update A record if a change has occured"""
     ip, changed = get_ipv4()
     if not ip:
         print("Unable to fetch current IPV4 address")
     elif changed:
         try:
-            payload = {"rrset_values": ["{}".format(ip)]}
+            payload = {"rrset_values": [f"{ip}"]}
             response = requests.put(
-                "{}domains/{}/records/{}/A".format(
-                    GANDI_URL, GANDI_DOMAIN, GANDI_RECORD
-                ),
-                json=payload,
-                headers=_get_gandi_headers(),
+                                    f"{GANDI_URL}domains/{GANDI_DOMAIN}/records/{GANDI_RECORD}/A",
+                                    json=payload,
+                                    headers=_get_gandi_headers(),
             )
             response.raise_for_status()
         except Exception as e:
-            print("Unable to update DNS record: {}".format(e))
+            print(f"Unable to update DNS record: {e}")
         else:
-            print(
-                "Set IP to {} for A record '{}' for {}".format(
-                    ip, GANDI_RECORD, GANDI_DOMAIN
-                )
-            )
+            print(f"Set IP to {ip} for A record '{GANDI_RECORD}' for {GANDI_DOMAIN}")
     else:
-        print("No change in external IP ({}), not updating A record".format(ip))
+        print(f"No change in external IP ({ip}), not updating A record")
 
 
-def update_aaaa_record():
+def update_aaaa_record() -> None:
     """Check public IPV6 address and update AAAA record if a change has occured"""
     ip, changed = get_ipv6()
     if not ip:
         print("Unable to fetch current IPV6 address")
     elif changed:
         try:
-            payload = {"rrset_values": ["{}".format(ip)]}
+            payload = {"rrset_values": [f"{ip}"]}
             response = requests.put(
-                "{}domains/{}/records/{}/AAAA".format(
-                    GANDI_URL, GANDI_DOMAIN, GANDI_RECORD
-                ),
+                f"{GANDI_URL}domains/{GANDI_DOMAIN}/records/{GANDI_RECORD}/AAAA",
                 json=payload,
                 headers=_get_gandi_headers(),
             )
             response.raise_for_status()
         except Exception as e:
-            print("Unable to update DNS record: {}".format(e))
+            print(f"Unable to update DNS record: {e}")
         else:
-            print(
-                "Set IP to {} for AAAA record '{}' for {}".format(
-                    ip, GANDI_RECORD, GANDI_DOMAIN
-                )
-            )
+            print(f"Set IP to {ip} for AAAA record '{GANDI_RECORD}' for {GANDI_DOMAIN}")
     else:
-        print("No change in external IP ({}), not updating AAAA record".format(ip))
+        print(f"No change in external IP ({ip}), not updating AAAA record")
 
 
 if __name__ == "__main__":
-    GANDI_URL = _get_env_var("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
-    GANDI_KEY = _get_env_var("GANDI_KEY", False)
-    GANDI_DOMAIN = _get_env_var("GANDI_DOMAIN", False)
-    GANDI_RECORD = _get_env_var("GANDI_RECORD", "@")
+    CACHE_KEY_IPV4 = os.environ.get("CACHE_KEY_IPV4", "/run/ipv4.last")
+    CACHE_KEY_IPV6 = os.environ.get("CACHE_KEY_IPV6", "/run/ipv6.last")
+    GANDI_URL = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
+    GANDI_KEY = os.environ.get("GANDI_KEY", '')
+    GANDI_DOMAIN = os.environ.get("GANDI_DOMAIN", False)
+    GANDI_RECORD = os.environ.get("GANDI_RECORD", "@")
     update_a_record()
     update_aaaa_record()
