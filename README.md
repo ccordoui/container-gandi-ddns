@@ -1,5 +1,7 @@
 # Gandi Dynamic DNS
 
+TODO: this help is outdated
+
 Dynamic DNS Update Client for Gandi's LiveDNS.
 
 [![](https://circleci.com/gh/wastrachan/docker-gandi-ddns.svg?style=svg)](https://circleci.com/gh/wastrachan/docker-gandi-ddns)
@@ -52,9 +54,16 @@ docker run --name gandi-ddns \
 Configuration is accomplished through the use of environment variables. The inclusive list is below.
 
 #### Environment Variables
+    cache = Cache(Path(os.environ.get('CACHE_PATH', '/dev/shm')))
+    url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
+    token = os.environ.get("GANDI_TOKEN", '')
+    domain = os.environ.get("GANDI_DOMAIN")
+    record = os.environ.get("GANDI_RECORD", "@")
+    protocols = os.environ.get("PROTOCOLS", 'ipv4,ipv6').split(',')
 
 | Variable          | Default                             | Description                                                                                          |
 | ----------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `GANDI_URL`       | `https://dns.api.gandi.net/api/v5/` | URL of the Gandi API.                                                                                |
 | `GANDI_URL`       | `https://dns.api.gandi.net/api/v5/` | URL of the Gandi API.                                                                                |
 | `GANDI_KEY`       | -                                   | API Key for your [Gandi.net account](https://docs.gandi.net/en/domain_names/advanced_users/api.html) |
 | `GANDI_DOMAIN`    | -                                   | Your Gandi.net domain name                                                                           |

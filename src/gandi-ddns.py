@@ -10,130 +10,91 @@ Released under the terms of the MIT license
 import os
 from pathlib import Path
 import requests
-from typing import Optional, Dict, Tuple
+from typing import Optional, Tuple
 
 
-def _get_cache_value(key: str) -> Optional[str]:
-    """Returns a value for a cache key, or None"""
-    address = None
-    try:
-        with Path(key).open() as f:
-            address = f.read()
-    except FileNotFoundError:
-        address = None
-    return address
+class Cache(object):
+    def __init__(self, base_folder: Path):
+        self._base_folder = base_folder
+
+    def _get_file_path(self, key: str) -> Path:
+        return self._base_folder / key
+
+    def get(self, key: str) -> Optional[str]:
+        cache_path = self._get_file_path(key)
+        if cache_path.exists():
+            return cache_path.read_text()
+        return None
+
+    def set(self, key: str, value: str) -> None:
+        cache_path = self._get_file_path(key)
+        cache_path.write_text(value)
 
 
-def _set_cache_value(key: str, value: str) -> str:
-    """Sets or updates the value for a cache key"""
-    Path(key).write_text(value)
-    return value
+class GandiUpdater(object):
+    def __init__(self, cache: Cache, token: str, base_url: str, domain: str, record: str):
+        self._cache = cache
+        self._update_url = f"{base_url}/domains/{domain}/records/{record}"
+        self._headers = {
+            "X-Api-Key": token,
+            "Content-Type": "application/json",
+        }
+        self._record_mapping = {
+            'ipv4': 'A',
+            'ipv6': 'AAAA',
+        }
+        self._domain = domain
+        self._record = record
 
+    def get_ip(self, version: str) -> Tuple[Optional[str], bool]:
+        """Gets the current public IP address
+        version: ipv4 or ipv6
 
-def _get_gandi_headers() -> Dict[str, str]:
-    """Returns API request headers for the Gandi API"""
-    return {
-        "X-Api-Key": GANDI_KEY,
-        "Content-Type": "application/json",
-    }
+        Returns:
+            (address, changed)
+                address: (str) current ip address
+                changed: (bool) True if ip address has changed
 
+        """
 
-def get_ipv4() -> Tuple[Optional[str], bool]:
-    """Gets the current public IPV4 address
+        response = requests.get(f"https://{version}.icanhazip.com/")
+        address = response.text.strip() if response.ok else None
+        changed = address is not None and address != self._cache.get(version)
+        if address and changed:
+            self._cache.set(version, address)
+        return (address, changed)
 
-    Returns:
-        (address, changed)
-            address: (str) current ipv4 address
-            changed: (bool) True if ipv4 address has changed
-
-    """
-    try:
-        response = requests.get("https://ipv4.icanhazip.com/")
-        response.raise_for_status()
-    except Exception:
-        address = None
-    else:
-        address = response.text.strip()
-    changed = False
-    if address and address != _get_cache_value(CACHE_KEY_IPV4):
-        _set_cache_value(CACHE_KEY_IPV4, address)
-        changed = True
-    return (address, changed)
-
-
-def get_ipv6() -> Tuple[Optional[str], bool]:
-    """Gets the current public IPV6 address
-
-    Returns:
-        (address, changed)
-            address: (str) current ipv6 address
-            changed: (bool) True if ipv6 address has changed
-
-    """
-    try:
-        response = requests.get("https://ipv6.icanhazip.com/")
-        response.raise_for_status()
-    except Exception:
-        address = None
-    else:
-        address = response.text.strip()
-    changed = False
-    if address and address != _get_cache_value(CACHE_KEY_IPV6):
-        _set_cache_value(CACHE_KEY_IPV6, address)
-        changed = True
-    return (address, changed)
-
-
-def update_a_record() -> None:
-    """Check public IPV4 address and update A record if a change has occured"""
-    ip, changed = get_ipv4()
-    if not ip:
-        print("Unable to fetch current IPV4 address")
-    elif changed:
-        try:
-            payload = {"rrset_values": [f"{ip}"]}
-            response = requests.put(
-                                    f"{GANDI_URL}domains/{GANDI_DOMAIN}/records/{GANDI_RECORD}/A",
-                                    json=payload,
-                                    headers=_get_gandi_headers(),
-            )
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Unable to update DNS record: {e}")
+    def update_record(self, version: str) -> None:
+        record_type = self._record_mapping[version]
+        ip, changed = self.get_ip(version)
+        if not ip:
+            print(f"Unable to fetch current {version} address")
+        elif changed:
+            try:
+                response = requests.put(
+                                        f"{self._update_url}/{record_type}",
+                                        json={"rrset_values": [f"{ip}"]},
+                                        headers=self._headers,
+                           )
+                response.raise_for_status()
+            except Exception as e:
+                print(f"Unable to update DNS record: {e}")
+            else:
+                print(f"Set IP to {ip} for {record_type} record '{self._record}' for {self._domain}")
         else:
-            print(f"Set IP to {ip} for A record '{GANDI_RECORD}' for {GANDI_DOMAIN}")
-    else:
-        print(f"No change in external IP ({ip}), not updating A record")
-
-
-def update_aaaa_record() -> None:
-    """Check public IPV6 address and update AAAA record if a change has occured"""
-    ip, changed = get_ipv6()
-    if not ip:
-        print("Unable to fetch current IPV6 address")
-    elif changed:
-        try:
-            payload = {"rrset_values": [f"{ip}"]}
-            response = requests.put(
-                f"{GANDI_URL}domains/{GANDI_DOMAIN}/records/{GANDI_RECORD}/AAAA",
-                json=payload,
-                headers=_get_gandi_headers(),
-            )
-            response.raise_for_status()
-        except Exception as e:
-            print(f"Unable to update DNS record: {e}")
-        else:
-            print(f"Set IP to {ip} for AAAA record '{GANDI_RECORD}' for {GANDI_DOMAIN}")
-    else:
-        print(f"No change in external IP ({ip}), not updating AAAA record")
+            print(f"No change in external IP ({ip}), not updating {record_type} record")
 
 
 if __name__ == "__main__":
-    CACHE_KEY_IPV4 = os.environ.get("CACHE_KEY_IPV4", "/run/ipv4.last")
-    CACHE_KEY_IPV6 = os.environ.get("CACHE_KEY_IPV6", "/run/ipv6.last")
-    GANDI_URL = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
-    GANDI_KEY = os.environ.get("GANDI_KEY", '')
-    GANDI_DOMAIN = os.environ.get("GANDI_DOMAIN", False)
-    GANDI_RECORD = os.environ.get("GANDI_RECORD", "@")
-    update_a_record()
-    update_aaaa_record()
+    cache = Cache(Path(os.environ.get('CACHE_PATH', '/dev/shm')))
+    url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
+    token = os.environ.get("GANDI_TOKEN", '')
+    domain = os.environ.get("GANDI_DOMAIN")
+    record = os.environ.get("GANDI_RECORD", "@")
+    protocols = os.environ.get("PROTOCOLS", 'ipv4,ipv6').split(',')
+    if domain is None:
+        print('Invalid domain specified')
+    else:
+        gandi = GandiUpdater(cache, token, url, domain, record)
+        for protocol in protocols:
+            gandi.update_record(protocol)
