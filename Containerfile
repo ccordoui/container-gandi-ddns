@@ -7,9 +7,13 @@ LABEL org.opencontainers.image.source="https://github.com/ccordoui/container-gan
 LABEL org.opencontainers.image.licenses="MIT"
 
 USER 0
+RUN yum -y --setopt=tsflags=nodocs update && bash -c 'rpm -e --nodeps redhat-logos-httpd || /bin/true' && yum -y clean all --enablerepo='*' && rm -rf /var/log/*
+RUN pip3 install -U pip setuptools wheel
 COPY src /tmp/src
 RUN /usr/bin/fix-permissions /tmp/src
 USER 1001
 
 # Install the dependencies
 RUN /usr/libexec/s2i/assemble
+
+CMD /opt/app-root/src/entrypoint.sh

@@ -1,7 +1,5 @@
 # Gandi Dynamic DNS
 
-TODO: this help is outdated
-
 Dynamic DNS Update Client for Gandi's LiveDNS.
 
 [![](https://circleci.com/gh/wastrachan/docker-gandi-ddns.svg?style=svg)](https://circleci.com/gh/wastrachan/docker-gandi-ddns)
@@ -29,18 +27,6 @@ buildah bud -t container-gandi-ddns .
 
 ## Run
 
-#### Docker
-
-Run this image with the `make run` shortcut, or manually with `docker run`. You'll need to define several environment variables for this container, and they are detailed below.
-
-```shell
-docker run --name gandi-ddns \
-           --rm \
-           -e GANDI_KEY="12343123abcd" \
-           -e GANDI_DOMAIN="mydomain.net" \
-           wastrachan/gandi-ddns:latest
-```
-
 ## Configuration
 
 Configuration is accomplished through the use of environment variables.
@@ -63,6 +49,12 @@ metadata:
   name: gandi-ddns
 data:
   GANDI_TOKEN: "My Secret Token"
+```
+
+## Run
+
+Deploy a crontab in kubernetes:
+```yaml
 ---
 # cronjob.yaml
 apiVersion: batch/v1
@@ -77,7 +69,7 @@ spec:
         spec:
           containers:
           - name: gandi-ddns
-            image: quay.io/ccordoui/container-gandi-ddns:latest
+            image: quay.io/ccordoui/container-gandi-ddns:stable
             imagePullPolicy: Always
             command:
             - python3
