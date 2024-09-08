@@ -51,6 +51,10 @@ data:
   GANDI_TOKEN: "My Secret Token"
 ```
 
+## Data
+
+It is better to keep the cache in a PV, you just have to mount it in the data folder
+
 ## Run
 
 Deploy a crontab in kubernetes:
@@ -71,6 +75,8 @@ spec:
           - name: gandi-ddns
             image: quay.io/ccordoui/container-gandi-ddns:stable
             imagePullPolicy: Always
+            concurrencyPolicy: Replace
+            restartPolicy: Never
             command:
             - python3
             - gandi-ddns.py
@@ -79,20 +85,14 @@ spec:
             - configMapRef:
                 name: gandi-ddns
             - secretRef:
-                  name: gandi-ddns
+                name: gandi-ddns
 ```
 
 #### Environment Variables
-    cache = Cache(Path(os.environ.get('CACHE_PATH', '/dev/shm')))
-    url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
-    token = os.environ.get("GANDI_TOKEN", '')
-    domain = os.environ.get("GANDI_DOMAIN")
-    record = os.environ.get("GANDI_RECORD", "@")
-    protocols = os.environ.get("PROTOCOLS", 'ipv4,ipv6').split(',')
 
 | Variable          | Default                             | Description                                                                                          |
 | ----------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `CACHE_PATH`      | `/dev/shm`                          | The base path for the ip cache (can be on PV, but in memory is enough for most scenarios             |
+| `CACHE_PATH`      | `data`                              | The base path for the ip cache (should be on PV)                                                     |
 | `GANDI_URL`       | `https://dns.api.gandi.net/api/v5`  | URL of the Gandi API.                                                                                |
 | `GANDI_TOKEN`     | -                                   | API Key for your [Gandi.net account](https://docs.gandi.net/en/domain_names/advanced_users/api.html) |
 | `GANDI_DOMAIN`    | -                                   | Your Gandi.net domain name                                                                           |

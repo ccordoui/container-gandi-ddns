@@ -27,7 +27,9 @@ spec:
           containers:
           - name: gandi-ddns
             image: quay.io/ccordoui/container-gandi-ddns:latest
+            concurrencyPolicy: Replace
             imagePullPolicy: Always
+            restartPolicy: Never
             command:
             - python3
             - gandi-ddns.py

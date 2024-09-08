@@ -59,7 +59,10 @@ class GandiUpdater(object):
 
         response = requests.get(f"https://{version}.icanhazip.com")
         address = response.text.strip() if response.ok else None
-        changed = address is not None and address != self._cache.get(version)
+        old_address = self._cache.get(version)
+        if old_address is None:
+            old_address = self.get_record(version).strip()
+        changed = address is not None and address != old_address
         if address and changed:
             self._cache.set(version, address)
         return (address, changed)
@@ -84,9 +87,21 @@ class GandiUpdater(object):
         else:
             print(f"No change in external IP ({ip}), not updating {record_type} record")
 
+    def get_record(self, version: str) -> str:
+        record_type = self._record_mapping[version]
+        try:
+            response = requests.get(
+                                    f"{self._update_url}/{record_type}",
+                                    headers=self._headers,
+                       )
+            response.raise_for_status()
+        except Exception as e:
+            print(f"Unable to get DNS record: {e}")
+        return response.json()['rrset_values'][0]
+
 
 if __name__ == "__main__":
-    cache = Cache(Path(os.environ.get('CACHE_PATH', '/dev/shm')))
+    cache = Cache(Path(os.environ.get('CACHE_PATH', 'data')))
     url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5")
     token = os.environ.get("GANDI_TOKEN", '')
     domain = os.environ.get("GANDI_DOMAIN")

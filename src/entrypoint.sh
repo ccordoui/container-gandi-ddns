@@ -20,6 +20,8 @@ spec:
           - name: gandi-ddns
             image: quay.io/ccordoui/container-gandi-ddns:latest
             imagePullPolicy: Always
+            concurrencyPolicy: Replace
+            restartPolicy: Never
             command:
             - python3
             - gandi-ddns.py
@@ -28,7 +30,7 @@ spec:
             - configMapRef:
                 name: gandi-ddns
             - secretRef:
-                  name: gandi-ddns
+                name: gandi-ddns
 EOF
 
 exit 1
