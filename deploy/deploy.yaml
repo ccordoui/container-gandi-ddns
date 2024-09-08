@@ -1,0 +1,39 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gandi-ddns
+data:
+  GANDI_DOMAIN: "example.com"
+  GANDI_RECORD: "www"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gandi-ddns
+data:
+  GANDI_TOKEN: "My Secret Token"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gandi-ddns
+spec:
+  schedule: "*/15 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: gandi-ddns
+            image: quay.io/ccordoui/container-gandi-ddns:latest
+            imagePullPolicy: Always
+            command:
+            - python3
+            - gandi-ddns.py
+          restartPolicy: OnFailure
+          envFrom:
+            - configMapRef:
+                name: gandi-ddns
+            - secretRef:
+                  name: gandi-ddns

@@ -57,7 +57,7 @@ class GandiUpdater(object):
 
         """
 
-        response = requests.get(f"https://{version}.icanhazip.com/")
+        response = requests.get(f"https://{version}.icanhazip.com")
         address = response.text.strip() if response.ok else None
         changed = address is not None and address != self._cache.get(version)
         if address and changed:
@@ -87,7 +87,7 @@ class GandiUpdater(object):
 
 if __name__ == "__main__":
     cache = Cache(Path(os.environ.get('CACHE_PATH', '/dev/shm')))
-    url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5/")
+    url = os.environ.get("GANDI_URL", "https://dns.api.gandi.net/api/v5")
     token = os.environ.get("GANDI_TOKEN", '')
     domain = os.environ.get("GANDI_DOMAIN")
     record = os.environ.get("GANDI_RECORD", "@")
