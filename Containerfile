@@ -1,4 +1,4 @@
-FROM ubi9/python-312
+FROM registry.access.redhat.com/ubi9/python-312
 
 LABEL org.opencontainers.image.title="Gandi DDNS"
 LABEL org.opencontainers.image.description="Dynamic DNS Update Client for Gandi's LiveDNS"
