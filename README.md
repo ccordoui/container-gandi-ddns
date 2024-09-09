@@ -97,6 +97,7 @@ spec:
 | `GANDI_TOKEN`     | -                                   | API Key for your [Gandi.net account](https://docs.gandi.net/en/domain_names/advanced_users/api.html) |
 | `GANDI_DOMAIN`    | -                                   | Your Gandi.net domain name                                                                           |
 | `GANDI_RECORD`    | `@`                                 | Record to update with your IP address                                                                |
+| `GANDI_TTL`       | `300`                               | TTL of the entry                                                                                     |
 | `PROTOCOLS`       | `ipv4,ipv6`                         | What need to be updated (can be `ipv4`, `ipv6` or `ipv4,ipv6`                                        |
 
 ## License

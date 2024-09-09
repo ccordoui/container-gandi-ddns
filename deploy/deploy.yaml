@@ -14,6 +14,17 @@ metadata:
 data:
   GANDI_TOKEN: "My Secret Token"
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gandi-ddns
+spec:
+  accessModes:
+    - ReadWriteOncePod
+  resources:
+    requests:
+      storage: 1Mi
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -24,6 +35,10 @@ spec:
     spec:
       template:
         spec:
+          volumes:
+          - name: cache
+            persistentVolumeClaim:
+              claimName: gandi-ddns
           containers:
           - name: gandi-ddns
             image: quay.io/ccordoui/container-gandi-ddns:latest
@@ -33,9 +48,11 @@ spec:
             command:
             - python3
             - gandi-ddns.py
-          restartPolicy: OnFailure
-          envFrom:
+            envFrom:
             - configMapRef:
                 name: gandi-ddns
             - secretRef:
-                  name: gandi-ddns
+                name: gandi-ddns
+            volumeMounts:
+            - mountPath: "/opt/app-root/src/data"
+              name: cache

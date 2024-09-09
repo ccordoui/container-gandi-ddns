@@ -32,11 +32,11 @@ class Cache(object):
 
 
 class GandiUpdater(object):
-    def __init__(self, cache: Cache, token: str, base_url: str, domain: str, record: str):
+    def __init__(self, cache: Cache, token: str, base_url: str, domain: str, record: str, ttl: int):
         self._cache = cache
         self._update_url = f"{base_url}/domains/{domain}/records/{record}"
         self._headers = {
-            "X-Api-Key": token,
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
         self._record_mapping = {
@@ -45,6 +45,7 @@ class GandiUpdater(object):
         }
         self._domain = domain
         self._record = record
+        self._ttl = ttl
 
     def get_ip(self, version: str) -> Tuple[Optional[str], bool]:
         """Gets the current public IP address
@@ -76,8 +77,11 @@ class GandiUpdater(object):
             try:
                 response = requests.put(
                                         f"{self._update_url}/{record_type}",
-                                        json={"rrset_values": [f"{ip}"]},
                                         headers=self._headers,
+                                        json={
+                                            "rrset_values": [f"{ip}"],
+                                            "rrset_ttl": self._ttl
+                                        },
                            )
                 response.raise_for_status()
             except Exception as e:
@@ -107,9 +111,10 @@ if __name__ == "__main__":
     domain = os.environ.get("GANDI_DOMAIN")
     record = os.environ.get("GANDI_RECORD", "@")
     protocols = os.environ.get("PROTOCOLS", 'ipv4,ipv6').split(',')
+    ttl = os.environ.get("GANDI_TTL", "300")
     if domain is None:
         print('Invalid domain specified')
     else:
-        gandi = GandiUpdater(cache, token, url, domain, record)
+        gandi = GandiUpdater(cache, token, url, domain, record, int(ttl))
         for protocol in protocols:
             gandi.update_record(protocol)
