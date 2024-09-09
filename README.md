@@ -9,57 +9,96 @@ Dynamic DNS Update Client for Gandi's LiveDNS.
 
 #### Docker Hub
 
-Pull the latest image from Docker Hub:
+Pull the latest image from Quay:
 
-```shell
-docker pull wastrachan/gandi-ddns
-```
-
-#### Github Container Registry
-
-Or, pull from the GitHub Container Registry:
-
-```shell
-docker pull ghcr.io/wastrachan/gandi-ddns
+```bash
+podman pull quay.io/ccordoui/container-gandi-ddns
 ```
 
 #### Build From Source
 
-Clone this repository, and run `make build` to build an image:
+Clone this repository, and run `buildah bud -t container-gandi-ddns .` to build an image:
 
-```shell
-git clone https://github.com/wastrachan/docker-gandi-ddns.git
-cd gandi-ddns
-make build
+```bash
+git clone https://github.com/ccordoui/container-gandi-ddns.git
+cd container-gandi-ddns
+buildah bud -t container-gandi-ddns .
 ```
 
 ## Run
 
-#### Docker
-
-Run this image with the `make run` shortcut, or manually with `docker run`. You'll need to define several environment variables for this container, and they are detailed below.
-
-```shell
-docker run --name gandi-ddns \
-           --rm \
-           -e GANDI_KEY="12343123abcd" \
-           -e GANDI_DOMAIN="mydomain.net" \
-           wastrachan/gandi-ddns:latest
-```
-
 ## Configuration
 
-Configuration is accomplished through the use of environment variables. The inclusive list is below.
+Configuration is accomplished through the use of environment variables.
+
+```yaml
+# cm.yaml
+--- 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-demo
+data:
+  GANDI_DOMAIN: "example.com"
+  GANDI_RECORD: "www"
+---
+# secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gandi-ddns
+data:
+  GANDI_TOKEN: "My Secret Token"
+```
+
+## Data
+
+It is better to keep the cache in a PV, you just have to mount it in the data folder
+
+## Run
+
+Deploy a crontab in kubernetes:
+```yaml
+---
+# cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gandi-ddns
+spec:
+  schedule: "*/15 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: gandi-ddns
+            image: quay.io/ccordoui/container-gandi-ddns:stable
+            imagePullPolicy: Always
+            concurrencyPolicy: Replace
+            restartPolicy: Never
+            command:
+            - python3
+            - gandi-ddns.py
+          restartPolicy: OnFailure
+          envFrom:
+            - configMapRef:
+                name: gandi-ddns
+            - secretRef:
+                name: gandi-ddns
+```
 
 #### Environment Variables
 
 | Variable          | Default                             | Description                                                                                          |
 | ----------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `GANDI_URL`       | `https://dns.api.gandi.net/api/v5/` | URL of the Gandi API.                                                                                |
-| `GANDI_KEY`       | -                                   | API Key for your [Gandi.net account](https://docs.gandi.net/en/domain_names/advanced_users/api.html) |
+| `CACHE_PATH`      | `data`                              | The base path for the ip cache (should be on PV)                                                     |
+| `GANDI_URL`       | `https://dns.api.gandi.net/api/v5`  | URL of the Gandi API.                                                                                |
+| `GANDI_TOKEN`     | -                                   | API Key for your [Gandi.net account](https://docs.gandi.net/en/domain_names/advanced_users/api.html) |
 | `GANDI_DOMAIN`    | -                                   | Your Gandi.net domain name                                                                           |
 | `GANDI_RECORD`    | `@`                                 | Record to update with your IP address                                                                |
-| `UPDATE_SCHEDULE` | `*/5 * * * *`                       | Cron-style schedule for dynamic-dns updates.                                                         |
+| `GANDI_TTL`       | `300`                               | TTL of the entry                                                                                     |
+| `PROTOCOLS`       | `ipv4,ipv6`                         | What need to be updated (can be `ipv4`, `ipv6` or `ipv4,ipv6`                                        |
 
 ## License
 
